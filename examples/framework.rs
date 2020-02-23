@@ -129,6 +129,8 @@ pub fn run<E: Example>(title: &str) {
         queue.submit(&[command_buf]);
     }
 
+    let mut last_texture = std::time::Instant::now();
+
     log::info!("Entering render loop...");
     event_loop.run(move |event, _, control_flow| {
         *control_flow = if cfg!(feature = "metal-auto-capture") {
@@ -169,9 +171,17 @@ pub fn run<E: Example>(title: &str) {
                 }
             }
             event::Event::RedrawRequested(_) => {
+                let pre_wait = std::time::Instant::now();
                 let frame = swap_chain
                     .get_next_texture()
                     .expect("Timeout when acquiring next swap chain texture");
+                let post_wait = std::time::Instant::now();
+                println!(
+                    "time since last `get_next_texture`: {:?}   time waited for this texture: {:?}",
+                    post_wait.duration_since(last_texture),
+                    pre_wait.elapsed(),
+                );
+                last_texture = post_wait;
                 let command_buf = example.render(&frame, &device);
                 queue.submit(&[command_buf]);
             }
