@@ -1789,13 +1789,15 @@ impl<B: GfxBackend> Device<B> {
         }
 
         if let Some(start_binding) = write_map.keys().next().cloned() {
-            let descriptors = write_map.into_iter().flat_map(|(_, list)| list);
+            // `SmallVec` is invariant in the lifetime of its descriptors. Collecting into
+            // a `Vec` lets the borrow of `desc_set` below end before the map is dropped.
+            let descriptors: Vec<_> = write_map.into_iter().flat_map(|(_, list)| list).collect();
             unsafe {
                 let write = hal::pso::DescriptorSetWrite {
                     set: desc_set.raw_mut(),
                     binding: start_binding,
                     array_offset: 0,
-                    descriptors,
+                    descriptors: descriptors.into_iter(),
                 };
                 self.raw.write_descriptor_set(write);
             }
